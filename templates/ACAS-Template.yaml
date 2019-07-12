@@ -1,0 +1,601 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  AWS CloudFormation ACAS Template VPC_Single_Instance_In_Subnet: Sample
+  template showing how to create a VPC and add an EC2 instance with an Elastic
+  IP address and a security group. **WARNING** This template creates an Amazon
+  EC2 instance. You will be billed for the AWS resources used if you create a
+  stack from this template.
+Parameters:
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t2.small
+    AllowedValues:
+      - t1.micro
+      - t2.nano
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t2.large
+      - m1.small
+      - m1.medium
+      - m1.large
+      - m1.xlarge
+      - m2.xlarge
+      - m2.2xlarge
+      - m2.4xlarge
+      - m3.medium
+      - m3.large
+      - m3.xlarge
+      - m3.2xlarge
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m4.10xlarge
+      - c1.medium
+      - c1.xlarge
+      - c3.large
+      - c3.xlarge
+      - c3.2xlarge
+      - c3.4xlarge
+      - c3.8xlarge
+      - c4.large
+      - c4.xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - g2.2xlarge
+      - g2.8xlarge
+      - r3.large
+      - r3.xlarge
+      - r3.2xlarge
+      - r3.4xlarge
+      - r3.8xlarge
+      - i2.xlarge
+      - i2.2xlarge
+      - i2.4xlarge
+      - i2.8xlarge
+      - d2.xlarge
+      - d2.2xlarge
+      - d2.4xlarge
+      - d2.8xlarge
+      - hi1.4xlarge
+      - hs1.8xlarge
+      - cr1.8xlarge
+      - cc2.8xlarge
+      - cg1.4xlarge
+    ConstraintDescription: must be a valid EC2 instance type.
+  ImageId:
+    Description: WebServer EC2 AMI id
+    Type: String
+    Default: ami-9887c6e7
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  VPCCIDR:
+    Description: CIDR Range of the vpc
+    Type: String
+    ConstraintDescription: VPCCIDR must be a valid CIDR block
+  SubnetCIDR:
+    Description: CIDR Range of the public subnet
+    Type: String
+    ConstraintDescription: SubnetCIDR must be a valid CIDR block
+  PrivSubnetCIDR:
+    Description: CIDR Range of the private subnet
+    Type: String
+    ConstraintDescription: PrivSubnetCIDR must be a valid CIDR block
+  ACASPrivateIP:
+    Description: Private IP Address of the ACAS Server
+    Type: String
+    ConstraintDescription: Must be a valid IP address
+  SchrodingerPeeringCIDR:
+    Description: CIDR Range of the schrodinger peering connection
+    Type: String
+    ConstraintDescription: SchrodingerPeeringCIDR must be a valid CIDR block
+Mappings:
+  Region2Examples:
+    us-east-1:
+      Examples: 'https://s3.amazonaws.com/cloudformation-examples-us-east-1'
+    us-west-2:
+      Examples: 'https://s3-us-west-2.amazonaws.com/cloudformation-examples-us-west-2'
+    us-west-1:
+      Examples: 'https://s3-us-west-1.amazonaws.com/cloudformation-examples-us-west-1'
+    eu-west-1:
+      Examples: 'https://s3-eu-west-1.amazonaws.com/cloudformation-examples-eu-west-1'
+    eu-west-2:
+      Examples: 'https://s3-eu-west-2.amazonaws.com/cloudformation-examples-eu-west-2'
+    eu-west-3:
+      Examples: 'https://s3-eu-west-3.amazonaws.com/cloudformation-examples-eu-west-3'
+    eu-central-1:
+      Examples: >-
+        https://s3-eu-central-1.amazonaws.com/cloudformation-examples-eu-central-1
+    ap-southeast-1:
+      Examples: >-
+        https://s3-ap-southeast-1.amazonaws.com/cloudformation-examples-ap-southeast-1
+    ap-northeast-1:
+      Examples: >-
+        https://s3-ap-northeast-1.amazonaws.com/cloudformation-examples-ap-northeast-1
+    ap-northeast-2:
+      Examples: >-
+        https://s3-ap-northeast-2.amazonaws.com/cloudformation-examples-ap-northeast-2
+    ap-northeast-3:
+      Examples: >-
+        https://s3-ap-northeast-3.amazonaws.com/cloudformation-examples-ap-northeast-3
+    ap-southeast-2:
+      Examples: >-
+        https://s3-ap-southeast-2.amazonaws.com/cloudformation-examples-ap-southeast-2
+    ap-south-1:
+      Examples: 'https://s3-ap-south-1.amazonaws.com/cloudformation-examples-ap-south-1'
+    us-east-2:
+      Examples: 'https://s3-us-east-2.amazonaws.com/cloudformation-examples-us-east-2'
+    ca-central-1:
+      Examples: >-
+        https://s3-ca-central-1.amazonaws.com/cloudformation-examples-ca-central-1
+    sa-east-1:
+      Examples: 'https://s3-sa-east-1.amazonaws.com/cloudformation-examples-sa-east-1'
+    cn-north-1:
+      Examples: >-
+        https://s3.cn-north-1.amazonaws.com.cn/cloudformation-examples-cn-north-1
+    cn-northwest-1:
+      Examples: >-
+        https://s3.cn-northwest-1.amazonaws.com.cn/cloudformation-examples-cn-northwest-1
+
+Resources:
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: !Ref VPCCIDR
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackId'
+        - Key: Name
+          Value: !Sub ${AWS::StackName}
+  Subnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: us-east-1e
+      VpcId: !Ref VPC
+      CidrBlock: !Ref SubnetCIDR
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackId'
+        - Key: Name
+          Value: !Sub pub-sub-${AWS::StackName}
+  PrivSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: us-east-1e
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivSubnetCIDR
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackId'
+        - Key: Name
+          Value: !Sub priv-sub-${AWS::StackName}
+  NatGatewayEIP:
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
+  NatGateway:
+    Type: 'AWS::EC2::NatGateway'
+    Properties:
+      AllocationId: !GetAtt 'NatGatewayEIP.AllocationId'
+      SubnetId: !Ref Subnet
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackId'
+        - Key: Name
+          Value: !Sub ${AWS::StackName}
+  PrivRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackId'
+        - Key: Name
+          Value: !Sub ${AWS::StackName}
+  PrivRoute:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      RouteTableId: !Ref PrivRouteTable
+      DestinationCidrBlock: '0.0.0.0/0'
+      NatGatewayId: !Ref NatGateway
+  PrivSubnetRouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PrivSubnet
+      RouteTableId: !Ref PrivRouteTable
+
+  InternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackId'
+        - Key: Name
+          Value: !Sub ${AWS::StackName}
+  AttachGateway:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+  RouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackId'
+        - Key: Name
+          Value: !Sub ${AWS::StackName}
+  Route:
+    Type: 'AWS::EC2::Route'
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  SubnetRouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref Subnet
+      RouteTableId: !Ref RouteTable
+  NetworkAcl:
+    Type: 'AWS::EC2::NetworkAcl'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackId'
+        - Key: Name
+          Value: !Sub ${AWS::StackName}
+  InboundHTTPNetworkAclEntry: 
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '100'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'false'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '80'
+        To: '80'
+  InboundHTTPSNetworkAclEntry: 
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '101'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'false'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '443'
+        To: '443'
+  InboundSSHNetworkAclEntry:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '102'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'false'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '22'
+        To: '22'
+  InboundPostgressNetworkAclEntry:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '103'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'false'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '5432'
+        To: '5432'
+  InboundResponsePortsNetworkAclEntry:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '104'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'false'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '1024'
+        To: '65535'
+  InboundNodeJSNetworkAclEntry: 
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '105'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'false'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '3000'
+        To: '3000'
+  InboundNodeJSNetworkAclEntry: 
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '106'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'false'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '3001'
+        To: '3001'
+  InboundNodeJSNetworkAclEntry: 
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '107'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'false'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '8080'
+        To: '8080'
+  OutBoundHTTPNetworkAclEntry:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '100'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'true'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '80'
+        To: '80'
+  OutBoundHTTPSNetworkAclEntry:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '101'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'true'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '443'
+        To: '443'
+  OutBoundPostgresNetworkAclEntry:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '102'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'true'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '3247'
+        To: '3247'
+  OutBoundLDAPNetworkAclEntry:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '103'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'true'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '636'
+        To: '636'
+  OutBoundResponsePortsNetworkAclEntry:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '104'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'true'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '1024'
+        To: '65535'
+  OutBoundSSHNetworkAclEntry:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '105'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'true'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '22'
+        To: '22'
+  SubnetNetworkAclAssociation:
+    Type: 'AWS::EC2::SubnetNetworkAclAssociation'
+    Properties:
+      SubnetId: !Ref Subnet
+      NetworkAclId: !Ref NetworkAcl
+  IPAddress:
+    Type: 'AWS::EC2::EIP'
+    DependsOn: AttachGateway
+    Properties:
+      Domain: vpc
+      InstanceId: !Ref WebServerInstance
+  InstanceSecurityGroupClient:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: !Ref VPC
+      GroupName: "client access"
+      GroupDescription: client access security group
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackId'
+        - Key: Name
+          Value: !Sub ${AWS::StackName}
+      SecurityGroupIngress:
+{% for item in client_ips %}
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: {{ item }}
+          Description: '{{ client_ips_descriptions[loop.index - 1] }}'
+        - IpProtocol: tcp
+          FromPort: '443'
+          ToPort: '443'
+          CidrIp: {{ item }}
+          Description: '{{ client_ips_descriptions[loop.index - 1] }}'
+{% endfor %}
+  InstanceSecurityGroupAdmin:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: !Ref VPC
+      GroupName: "admin access"
+      GroupDescription: admin access security group
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackId'
+        - Key: Name
+          Value: !Sub ${AWS::StackName}
+      SecurityGroupIngress:
+{% for item in admin_ips %}
+        - IpProtocol: tcp
+          FromPort: '5432'
+          ToPort: '5432'
+          CidrIp: {{ item }}
+          Description: '{{ admin_ips_descriptions[loop.index - 1] }}'
+        - IpProtocol: tcp
+          FromPort: '3000'
+          ToPort: '3000'
+          CidrIp: {{ item }}
+          Description: '{{ admin_ips_descriptions[loop.index - 1] }}'
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: {{ item }}
+          Description: '{{ admin_ips_descriptions[loop.index - 1] }}'
+        - IpProtocol: tcp
+          FromPort: '8080'
+          ToPort: '8080'
+          CidrIp: {{ item }}
+          Description: '{{ admin_ips_descriptions[loop.index - 1] }}'
+        - IpProtocol: tcp
+          FromPort: '3001'
+          ToPort: '3001'
+          CidrIp: {{ item }}
+          Description: '{{ admin_ips_descriptions[loop.index - 1] }}'
+{% endfor %}
+  ACASDataVolume:
+    Type: AWS::EC2::Volume
+    Properties:
+      AvailabilityZone: us-east-1e
+      Encrypted: true
+      KmsKeyId: {{ acas_data_volume_encryption_key }}
+      Size: 50
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}_data
+      VolumeType: gp2
+  WebServerInstance:
+    Type: 'AWS::EC2::Instance'
+    DependsOn: AttachGateway
+    Metadata:
+      AWS::CloudFormation::Init:
+          configSets:
+              default:
+                  - install_base
+          install_base:
+              packages:
+                  yum: 
+                  # Example packages:
+                      bash-completion: []
+                      telnet: []
+                      wget: []
+              files:
+                  # These files are needed for CloudFormation::Init to work
+                  /etc/cfn/cfn-hup.conf:
+                      content: !Sub |
+                          [main]
+                          stack=${AWS::StackId}
+                          region=${AWS::Region}
+                          interval=1
+                  /etc/cfn/hooks.d/cfn-auto-reloader.conf:
+                      content: !Sub |
+                          [cfn-auto-reloader-hook]
+                          triggers=post.update
+                          path=Resources.WebServerInstance.Metadata.AWS::CloudFormation::Init
+                          action=/opt/aws/bin/cfn-init -v --stack ${AWS::StackId} --region ${AWS::Region} --resource WebServerInstance
+                          runas=root
+              services:
+                  sysvinit:
+                      cfn-hup:
+                          enabled: true
+                          ensureRunning: true
+    Properties:
+      AvailabilityZone: us-east-1e
+      ImageId: !Ref ImageId 
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackId'
+        - Key: Name
+          Value: !Ref 'AWS::StackName'
+{% if run_backups | bool %}
+        - Key: Backup
+          Value: True
+{% else %}
+        - Key: Backup
+          Value: False
+{% endif %}
+{% if backups_retention is defined %}
+        - Key: Retention
+          Value: {{ backups_retention }}
+{% endif %}
+      NetworkInterfaces:
+        - GroupSet:
+            - !Ref InstanceSecurityGroupClient
+            - !Ref InstanceSecurityGroupAdmin
+          AssociatePublicIpAddress: 'true'
+          DeviceIndex: '0'
+          DeleteOnTermination: 'true'
+          SubnetId: !Ref Subnet
+          PrivateIpAddress : !Ref ACASPrivateIP
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            DeleteOnTermination: true
+            VolumeSize: 20
+      Volumes:
+        - Device: /dev/sdf
+          VolumeId: !Ref 'ACASDataVolume'
+      UserData: 
+          Fn::Base64: !Sub |
+              #!/bin/bash
+              # Version: 1.0
+              yum install -y epel-release
+              yum install -y awscli
+              /usr/bin/easy_install --script-dir /opt/aws/bin https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
+              cp -v /usr/lib/python2*/site-packages/aws_cfn_bootstrap*/init/redhat/cfn-hup /etc/init.d
+              chmod +x /etc/init.d/cfn-hup
+              # Mount data volume
+              mkfs -t ext4 /dev/xvdf
+              mkdir /vol
+              mkdir /vol/acas
+              mount /dev/xvdf /vol/acas
+              echo "/dev/xvdf /vol/acas ext4 defaults,nofail 0 2" | sudo tee --append /etc/fstab
+              # Signal build success
+              /opt/aws/bin/cfn-init --stack ${AWS::StackId} --resource WebServerInstance --region ${AWS::Region}
+              /opt/aws/bin/cfn-signal -e 0 --stack ${AWS::StackName} --resource WebServerInstance --region ${AWS::Region}
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT5M

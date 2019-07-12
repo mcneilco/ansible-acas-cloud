@@ -1,0 +1,4 @@
+---
+- name: "Install ACAS Cloud"
+  block:
+    - import_tasks: cloud/main.yml

@@ -1,0 +1,63 @@
+# Disable SELinux
+- name: Create CloudFormation template
+  template:
+    src: "ACAS-Template.yaml"
+    dest: "/tmp/ACAS-{{ stack_name }}.yaml"
+    mode: 0777
+  tags: 
+    - cloud
+    - cloud-formation-deploy
+    - cloud-formation-deploy-template
+  delegate_to: localhost
+- name: Create/Deploy/Apply stack settings
+  cloudformation:
+    stack_name: "{{ stack_name }}"
+    state: "present"
+    profile: "{{ aws_profile }}"
+    region: "us-east-1"
+    disable_rollback: false
+    template: "/tmp/ACAS-{{ stack_name }}.yaml"
+    template_parameters:
+      KeyName: "acas"
+      InstanceType: "r3.large"
+      ImageId: ami-9887c6e7
+      VPCCIDR: "{{ vpc_cidr }}"
+      SubnetCIDR: "{{ pub_subnet_cidr }}"
+      PrivSubnetCIDR: "{{ priv_subnet_cidr }}"
+      ACASPrivateIP: "{{ acas_private_ip }}"
+      SchrodingerPeeringCIDR: "{{ schrodinger_peering_cidr }}"
+  delegate_to: localhost
+  tags: 
+    - cloud
+    - cloud-formation-deploy
+  # register: stack
+- name: Get summary information about the stack
+  cloudformation_facts:
+    profile: "{{ aws_profile }}"
+    stack_name: "{{ stack_name }}"
+    stack_resources: true
+  delegate_to: localhost
+  tags: 
+    - cloud
+  register: stack
+- name: Stack info
+  debug:
+    msg: "{{ stack }}"
+  tags: 
+    - cloud
+    - info
+- name: Simple A record (IPV4 address) lookup for {{ acas_fqdn }}
+  connection: local
+  debug: msg="{{ lookup('dig', acas_fqdn)}}"
+- name: Create/Update RIMU A-Record for {{ acas_fqdn }}
+  connection: local
+  uri:
+    url: "https://rimuhosting.com/dns/dyndns.jsp?host={{ acas_fqdn }}&api_key={{ rimu_dns_apikey }}&value={{ ansible_facts['cloudformation'][stack_name]['stack_resources']['IPAddress']  }}"
+  delegate_to: localhost
+  when: lookup('dig', acas_fqdn ) != ansible_facts['cloudformation'][stack_name]['stack_resources']['IPAddress']
+- name: Add instance to host group
+  add_host: hostname={{ ansible_facts['cloudformation'][stack_name]['stack_resources']['IPAddress']  }} groups=acas
+    - info
+- name: List of all hosts
+  debug:
+    msg: "{{ play_hosts }}"

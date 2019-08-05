@@ -68,6 +68,7 @@ Resources:
                 reservations = ec.describe_instances(
                     Filters=[
                         {'Name': 'tag-key', 'Values': ['backup', 'Backup']},
+                        {'Name': 'tag-value', 'Values': ['true',"True"]}
                     ]
                 ).get(
                     'Reservations', []
@@ -83,11 +84,13 @@ Resources:
                         retention_days = [
                             int(t.get('Value')) for t in instance['Tags']
                             if t['Key'] == 'Retention'][0]
+                    except IndexError:
+                        retention_days = 7
+                    try:
                         instance_name = [
                             t.get('Value') for t in instance['Tags']
                             if t['Key'] == 'Name'][0]
                     except IndexError:
-                        retention_days = 7
                         instance_name = "unknown"
                     
                     delete_date = datetime.date.today() + datetime.timedelta(days=retention_days)

@@ -61,3 +61,15 @@
 - name: List of all hosts
   debug:
     msg: "{{ play_hosts }}"
+- name: Create/Deploy/Apply daily-backups
+  cloudformation:
+    stack_name: "daily-snapshots"
+    state: "present"
+    profile: "{{ aws_profile }}"
+    region: "us-east-1"
+    disable_rollback: false
+    template: "roles/ansible-acas-cloud/templates/daily-snapshots.yaml"
+  delegate_to: localhost
+  tags: 
+    - cloud
+    - daily-snapshots

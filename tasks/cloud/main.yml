@@ -70,6 +70,4 @@
     disable_rollback: false
     template: "roles/ansible-acas-cloud/templates/daily-snapshots.yaml"
   delegate_to: localhost
-  tags: 
-    - cloud
-    - daily-snapshots
+  tags: [ never, daily-snapshots ]

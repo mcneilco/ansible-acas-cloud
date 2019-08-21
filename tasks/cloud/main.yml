@@ -18,7 +18,7 @@
     disable_rollback: false
     template: "/tmp/ACAS-{{ stack_name }}.yaml"
     template_parameters:
-      KeyName: "acas"
+      KeyName: "{{ ec2_key_pair_name | default('acas') }}"
       InstanceType: "r3.large"
       ImageId: ami-9887c6e7
       VPCCIDR: "{{ vpc_cidr }}"

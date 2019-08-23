@@ -15,6 +15,20 @@ client_ips_descriptions: []
 admin_ips: []
 admin_ips_descriptions: []
 
+# To add additional ports
+# additional_networkacl_ports: [
+#   {
+#     "name": "SDFProcessor",
+#     "port": 5000
+#   }
+# ]
+
+# Additional admin ports equal to the additional network acl ports
+# additional_admin_ports: "{{ additional_networkacl_ports }}"
+
+# Additional client ports equal to the additional network acl ports
+# additional_client_ports: "{{ additional_networkacl_ports }}"
+
 # AWS Profile to use
 aws_profile: "{{ company }}"
 

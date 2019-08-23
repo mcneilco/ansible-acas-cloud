@@ -432,6 +432,20 @@ Resources:
       PortRange:
         From: '587'
         To: '587'
+{% for item in additional_networkacl_ports %}
+  OutBound{{ item['name'] }}NetworkAclEntry:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '{{ loop.index + 106 }}'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'true'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '{{ item['port'] }}'
+        To: '{{ item['port'] }}'
+{% endfor %}
   SubnetNetworkAclAssociation:
     Type: 'AWS::EC2::SubnetNetworkAclAssociation'
     Properties:
@@ -456,6 +470,7 @@ Resources:
           Value: !Sub ${AWS::StackName}
       SecurityGroupIngress:
 {% for item in client_ips %}
+{% set outer_loop = loop %}
         - IpProtocol: tcp
           FromPort: '80'
           ToPort: '80'
@@ -466,6 +481,13 @@ Resources:
           ToPort: '443'
           CidrIp: {{ item }}
           Description: '{{ client_ips_descriptions[loop.index - 1] }}'
+{% for additional_client_port in additional_client_ports %}
+        - IpProtocol: tcp
+          FromPort: '{{ additional_client_port['port'] }}'
+          ToPort: '{{ additional_client_port['port'] }}'
+          CidrIp: {{ item }}
+          Description: '{{ client_ips_descriptions[outer_loop.index - 1] }}'
+{% endfor %}
 {% endfor %}
   InstanceSecurityGroupAdmin:
     Type: 'AWS::EC2::SecurityGroup'
@@ -480,6 +502,7 @@ Resources:
           Value: !Sub ${AWS::StackName}
       SecurityGroupIngress:
 {% for item in admin_ips %}
+{% set outer_loop = loop %}
         - IpProtocol: tcp
           FromPort: '5432'
           ToPort: '5432'
@@ -505,6 +528,13 @@ Resources:
           ToPort: '3001'
           CidrIp: {{ item }}
           Description: '{{ admin_ips_descriptions[loop.index - 1] }}'
+{% for additional_admin_port in additional_admin_ports %}
+        - IpProtocol: tcp
+          FromPort: '{{ additional_admin_port['port'] }}'
+          ToPort: '{{ additional_admin_port['port'] }}'
+          CidrIp: {{ item }}
+          Description: '{{ admin_ips_descriptions[outer_loop.index - 1] }}'
+{% endfor %}
 {% endfor %}
   ACASDataVolume:
     Type: AWS::EC2::Volume

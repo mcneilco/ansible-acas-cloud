@@ -22,6 +22,7 @@ admin_ips_descriptions: []
 #     "port": 5000
 #   }
 # ]
+additional_networkacl_ports: []
 
 # Additional admin ports equal to the additional network acl ports
 # additional_admin_ports: "{{ additional_networkacl_ports }}"

@@ -38,4 +38,8 @@ aws_profile: "{{ company }}"
 # ACAS data volume encryption key
 acas_data_volume_encryption_key: arn:aws:kms:us-east-1:1234567:key/1234567-1234567-1234567
 
+# Run backups on this server?
 run_backups: false
+
+# What AWS instance type to create
+instance_type: r5a.large

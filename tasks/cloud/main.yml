@@ -19,7 +19,7 @@
     template: "/tmp/ACAS-{{ stack_name }}.yaml"
     template_parameters:
       KeyName: "{{ ec2_key_pair_name | default('acas') }}"
-      InstanceType: "r3.large"
+      InstanceType: "{{ instance_type }}"
       ImageId: ami-9887c6e7
       VPCCIDR: "{{ vpc_cidr }}"
       SubnetCIDR: "{{ pub_subnet_cidr }}"
@@ -71,4 +71,4 @@
     disable_rollback: false
     template: "roles/ansible-acas-cloud/templates/daily-snapshots.yaml"
   delegate_to: localhost
-  tags: [ never, daily-snapshots ]
+  tags: [ daily-snapshots ]

@@ -41,5 +41,11 @@ acas_data_volume_encryption_key: arn:aws:kms:us-east-1:1234567:key/1234567-12345
 # Run backups on this server?
 run_backups: false
 
+# What AWS region?
+aws_region: us-east-1
+
+# What AWS availability zone
+aws_availability_zone: us-east-1a
+
 # What AWS instance type to create
 instance_type: r5a.large

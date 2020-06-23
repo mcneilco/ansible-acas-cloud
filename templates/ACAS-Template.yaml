@@ -99,7 +99,7 @@ Resources:
   Subnet:
     Type: 'AWS::EC2::Subnet'
     Properties:
-      AvailabilityZone: us-east-1a
+      AvailabilityZone: {{ aws_availability_zone }}
       VpcId: !Ref VPC
       CidrBlock: !Ref SubnetCIDR
       Tags:
@@ -110,7 +110,7 @@ Resources:
   PrivSubnet:
     Type: 'AWS::EC2::Subnet'
     Properties:
-      AvailabilityZone: us-east-1a
+      AvailabilityZone: {{ aws_availability_zone }}
       VpcId: !Ref VPC
       CidrBlock: !Ref PrivSubnetCIDR
       Tags:
@@ -483,7 +483,7 @@ Resources:
   ACASDataVolume:
     Type: AWS::EC2::Volume
     Properties:
-      AvailabilityZone: us-east-1a
+      AvailabilityZone: {{ aws_availability_zone }}
       Encrypted: true
       KmsKeyId: {{ acas_data_volume_encryption_key }}
       Size: 50
@@ -527,7 +527,7 @@ Resources:
                           enabled: true
                           ensureRunning: true
     Properties:
-      AvailabilityZone: us-east-1a
+      AvailabilityZone: {{ aws_availability_zone }}
       ImageId: !Ref ImageId 
       InstanceType: !Ref InstanceType
       KeyName: !Ref KeyName

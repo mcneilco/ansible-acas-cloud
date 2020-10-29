@@ -1,0 +1,192 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  AWS CloudFormation ACAS Template VPC_Single_Instance_In_Subnet: Sample
+  template showing how to create a VPC and add an EC2 instance with an Elastic
+  IP address and a security group. **WARNING** This template creates an Amazon
+  EC2 instance. You will be billed for the AWS resources used if you create a
+  stack from this template.
+Parameters:
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: r5a.large
+  ImageId:
+    Description: WebServer EC2 AMI id
+    Type: String
+    Default: ami-01ca03df4a6012157
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  ACASPrivateIP:
+    Description: Private IP Address of the ACAS Server
+    Type: String
+    ConstraintDescription: Must be a valid IP address
+  Subnet:
+    Description: ACASSubnet
+    Type: AWS::EC2::Subnet::Id
+    ConstraintDescription: must be a subnet id
+  SecurityGroupIDs:
+    Description: Security groups that can be used to access the EC2 instance
+    Type: List<AWS::EC2::SecurityGroup::Id>
+    ConstraintDescription: must be list of EC2 security group ids
+Mappings:
+  Region2Examples:
+    us-east-1:
+      Examples: 'https://s3.amazonaws.com/cloudformation-examples-us-east-1'
+    us-west-2:
+      Examples: 'https://s3-us-west-2.amazonaws.com/cloudformation-examples-us-west-2'
+    us-west-1:
+      Examples: 'https://s3-us-west-1.amazonaws.com/cloudformation-examples-us-west-1'
+    eu-west-1:
+      Examples: 'https://s3-eu-west-1.amazonaws.com/cloudformation-examples-eu-west-1'
+    eu-west-2:
+      Examples: 'https://s3-eu-west-2.amazonaws.com/cloudformation-examples-eu-west-2'
+    eu-west-3:
+      Examples: 'https://s3-eu-west-3.amazonaws.com/cloudformation-examples-eu-west-3'
+    eu-central-1:
+      Examples: >-
+        https://s3-eu-central-1.amazonaws.com/cloudformation-examples-eu-central-1
+    ap-southeast-1:
+      Examples: >-
+        https://s3-ap-southeast-1.amazonaws.com/cloudformation-examples-ap-southeast-1
+    ap-northeast-1:
+      Examples: >-
+        https://s3-ap-northeast-1.amazonaws.com/cloudformation-examples-ap-northeast-1
+    ap-northeast-2:
+      Examples: >-
+        https://s3-ap-northeast-2.amazonaws.com/cloudformation-examples-ap-northeast-2
+    ap-northeast-3:
+      Examples: >-
+        https://s3-ap-northeast-3.amazonaws.com/cloudformation-examples-ap-northeast-3
+    ap-southeast-2:
+      Examples: >-
+        https://s3-ap-southeast-2.amazonaws.com/cloudformation-examples-ap-southeast-2
+    ap-south-1:
+      Examples: 'https://s3-ap-south-1.amazonaws.com/cloudformation-examples-ap-south-1'
+    us-east-2:
+      Examples: 'https://s3-us-east-2.amazonaws.com/cloudformation-examples-us-east-2'
+    ca-central-1:
+      Examples: >-
+        https://s3-ca-central-1.amazonaws.com/cloudformation-examples-ca-central-1
+    sa-east-1:
+      Examples: 'https://s3-sa-east-1.amazonaws.com/cloudformation-examples-sa-east-1'
+    cn-north-1:
+      Examples: >-
+        https://s3.cn-north-1.amazonaws.com.cn/cloudformation-examples-cn-north-1
+    cn-northwest-1:
+      Examples: >-
+        https://s3.cn-northwest-1.amazonaws.com.cn/cloudformation-examples-cn-northwest-1
+
+Resources:
+  ACASDataVolume:
+    Type: AWS::EC2::Volume
+    Properties:
+      AvailabilityZone: {{ aws_availability_zone }}
+      Encrypted: true
+      KmsKeyId: {{ acas_data_volume_encryption_key }}
+      Size: 50
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}_data
+      VolumeType: gp2
+  IPAddress:
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
+      InstanceId: !Ref WebServerInstance
+  WebServerInstance:
+    Type: 'AWS::EC2::Instance'
+    Metadata:
+      AWS::CloudFormation::Init:
+          configSets:
+              default: I 
+                  - install_base
+          install_base:
+              packages:
+                  yum: 
+                  # Example packages:
+                      bash-completion: []
+                      telnet: []
+                      wget: []
+              files:
+                  # These files are needed for CloudFormation::Init to work
+                  /etc/cfn/cfn-hup.conf:
+                      content: !Sub |
+                          [main]
+                          stack=${AWS::StackId}
+                          region=${AWS::Region}
+                          interval=1
+                  /etc/cfn/hooks.d/cfn-auto-reloader.conf:
+                      content: !Sub |
+                          [cfn-auto-reloader-hook]
+                          triggers=post.update
+                          path=Resources.WebServerInstance.Metadata.AWS::CloudFormation::Init
+                          action=/opt/aws/bin/cfn-init -v --stack ${AWS::StackId} --region ${AWS::Region} --resource WebServerInstance
+                          runas=root
+              services:
+                  sysvinit:
+                      cfn-hup:
+                          enabled: true
+                          ensureRunning: true
+    Properties:
+      AvailabilityZone: {{ aws_availability_zone }}
+      ImageId: !Ref ImageId 
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackId'
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-acas
+{% if run_backups | bool %}
+        - Key: Backup
+          Value: True
+{% else %}
+        - Key: Backup
+          Value: False
+{% endif %}
+{% if backups_retention is defined %}
+        - Key: Retention
+          Value: {{ backups_retention }}
+{% endif %}
+{% if true %}
+      NetworkInterfaces:
+        - GroupSet: !Ref SecurityGroupIDs
+          AssociatePublicIpAddress: 'true'
+          DeviceIndex: '0'
+          DeleteOnTermination: 'true'
+          SubnetId: !Ref Subnet
+          PrivateIpAddress : !Ref ACASPrivateIP
+{% else %}
+      SecurityGroupIds: !Ref SecurityGroupIDs
+{% endif %}
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            DeleteOnTermination: true
+            VolumeSize: 20
+      Volumes:
+        - Device: /dev/sdf
+          VolumeId: !Ref 'ACASDataVolume'
+      UserData: 
+          Fn::Base64: !Sub |
+              #!/bin/bash
+              # Version: 1.0
+              dnf install -y python3-pip
+              pip3 install awscli --upgrade
+              /usr/bin/easy_install-3 --script-dir /opt/aws/bin https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz
+              cp -v /usr/local/lib/python3*/site-packages/aws_cfn_bootstrap*/init/redhat/cfn-hup /etc/init.d
+              chmod +x /etc/init.d/cfn-hup
+              # Mount data volume
+              mkfs -t ext4 /dev/nvme1n1
+              mkdir /vol
+              mkdir /vol/acas
+              mount /dev/nvme1n1 /vol/acas
+              echo "/dev/nvme1n1 /vol/acas ext4 defaults,nofail 0 2" | sudo tee --append /etc/fstab
+              # Signal build success
+              /opt/aws/bin/cfn-init --stack ${AWS::StackId} --resource WebServerInstance --region ${AWS::Region}
+              /opt/aws/bin/cfn-signal -e 0 --stack ${AWS::StackName} --resource WebServerInstance --region ${AWS::Region}
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT5M

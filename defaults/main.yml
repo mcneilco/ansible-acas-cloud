@@ -4,6 +4,7 @@ env: test
 company: companyname
 stack_name: "{{ company }}-{{ env }}"
 acas_fqdn: "{{ company }}-{{ env }}.onacaslims.com"
+manage_full_stack: true
 vpc_cidr: 10.100.60.0/25
 schrodinger_peering_cidr: 10.100.54.0/25
 pub_subnet_cidr: 10.100.60.0/28
@@ -49,3 +50,9 @@ aws_availability_zone: us-east-1a
 
 # What AWS instance type to create
 instance_type: r5a.large
+
+acas_security_groups: []
+
+acas_instance_subnet:
+
+termination_protection: true

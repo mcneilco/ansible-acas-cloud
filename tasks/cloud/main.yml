@@ -1,49 +1,101 @@
-# Disable SELinux
-- name: Create CloudFormation template
+- name: Set stack names
+  set_fact:
+    vpc_stack_name: "{{ stack_name }}-ACAS-VPC"
+    ec2_stack_name: "{{ stack_name }}-ACAS-EC2"
+  tags:
+    - host
+    - cloud
+    - cloud-formation-deploy
+- name: Run template on "{{ vpc_stack_name }}".yaml
   template:
-    src: "ACAS-Template.yaml"
-    dest: "/tmp/ACAS-{{ stack_name }}.yaml"
+    src: "ACAS-Basic-VPC.yaml"
+    dest: "/tmp/{{ vpc_stack_name }}.yaml"
     mode: 0777
   tags: 
     - cloud
     - cloud-formation-deploy
     - cloud-formation-deploy-template
   delegate_to: localhost
-- name: Create/Deploy/Apply stack settings
+  when: manage_full_stack
+- name: Create/Deploy/Apply "{{ vpc_stack_name }}"
   cloudformation:
-    stack_name: "{{ stack_name }}"
+    stack_name: "{{ vpc_stack_name }}"
     state: "present"
+    # create_changeset: true
+    termination_protection: "{{ termination_protection }}"
     profile: "{{ aws_profile }}"
     region: "{{ aws_region }}"
     disable_rollback: false
-    template: "/tmp/ACAS-{{ stack_name }}.yaml"
+    template: "/tmp/{{ vpc_stack_name }}.yaml"
     template_parameters:
-      KeyName: "{{ ec2_key_pair_name | default('acas') }}"
-      InstanceType: "{{ instance_type }}"
-      ImageId: ami-9887c6e7
       VPCCIDR: "{{ vpc_cidr }}"
       SubnetCIDR: "{{ pub_subnet_cidr }}"
       PrivSubnetCIDR: "{{ priv_subnet_cidr }}"
-      ACASPrivateIP: "{{ acas_private_ip }}"
       SchrodingerPeeringCIDR: "{{ schrodinger_peering_cidr }}"
   delegate_to: localhost
   tags: 
     - cloud
     - cloud-formation-deploy
-  # register: stack
-- name: Get summary information about the stack
-  cloudformation_facts:
+  when: manage_full_stack
+- name: "Get summary information about {{ vpc_stack_name }}"
+  cloudformation_info:
     profile: "{{ aws_profile }}"
-    stack_name: "{{ stack_name }}"
+    stack_name: "{{ vpc_stack_name }}"
     stack_resources: true
   delegate_to: localhost
   tags: 
     - cloud
     - host
-  register: stack
-- name: Stack info
+  register: vpc_stack_info
+  when: manage_full_stack
+- name: Managed stack info
   debug:
-    msg: "{{ stack }}"
+    msg: "{{ vpc_stack_info }}"
+  tags: 
+    - cloud
+  when: manage_full_stack
+- name: Run template on basic ec2 instance
+  template:
+    src: "ACAS-Basic-EC2.yaml"
+    dest: "/tmp/{{ ec2_stack_name }}.yaml"
+    mode: 0777
+  tags: 
+    - cloud
+    - cloud-formation-deploy
+    - cloud-formation-deploy-template
+  delegate_to: localhost
+- name: Create/Deploy/Apply "{{ ec2_stack_name }}"
+  cloudformation:
+    stack_name: "{{ ec2_stack_name }}"
+    state: "present"
+    profile: "{{ aws_profile }}"
+    region: "{{ aws_region }}"
+    disable_rollback: false
+    template: "/tmp/{{ ec2_stack_name }}.yaml"
+    template_parameters:
+      KeyName: "{{ ec2_key_pair_name | default('acas') }}"
+      InstanceType: "{{ instance_type }}"
+      ImageId: ami-01ca03df4a6012157
+      ACASPrivateIP: "{{ acas_private_ip }}"
+      Subnet: "{{ vpc_stack_info['cloudformation'][vpc_stack_name]['stack_resources']['Subnet'] if manage_full_stack else acas_instance_subnet }}"
+      SecurityGroupIDs: "{{ [vpc_stack_info['cloudformation'][vpc_stack_name]['stack_resources']['InstanceSecurityGroupAdmin'], vpc_stack_info['cloudformation'][vpc_stack_name]['stack_resources']['InstanceSecurityGroupClient']]|join(',') if manage_full_stack else acas_security_groups|join(',') }}"
+  delegate_to: localhost
+  tags: 
+    - cloud
+    - cloud-formation-deploy
+- name: "Get summary information about {{ ec2_stack_name }}"
+  cloudformation_info:
+    profile: "{{ aws_profile }}"
+    stack_name: "{{ ec2_stack_name }}"
+    stack_resources: true
+  delegate_to: localhost
+  tags: 
+    - cloud
+    - host
+  register: ec2_stack_info
+- name: "{{ ec2_stack_name }} Information"
+  debug:
+    msg: "{{ ec2_stack_info }}"
   tags: 
     - cloud
 - name: Simple A record (IPV4 address) lookup for {{ acas_fqdn }}
@@ -52,11 +104,11 @@
 - name: Create/Update RIMU A-Record for {{ acas_fqdn }}
   connection: local
   uri:
-    url: "https://rimuhosting.com/dns/dyndns.jsp?host={{ acas_fqdn }}&api_key={{ rimu_dns_apikey }}&value={{ ansible_facts['cloudformation'][stack_name]['stack_resources']['IPAddress']  }}"
+    url: "https://rimuhosting.com/dns/dyndns.jsp?host={{ acas_fqdn }}&api_key={{ rimu_dns_apikey }}&value={{ ec2_stack_info['cloudformation'][ec2_stack_name]['stack_resources']['IPAddress']  }}"
   delegate_to: localhost
-  when: lookup('dig', acas_fqdn ) != ansible_facts['cloudformation'][stack_name]['stack_resources']['IPAddress']
+  when: manage_full_stack and lookup('dig', acas_fqdn ) != ec2_stack_info['cloudformation'][ec2_stack_name]['stack_resources']['IPAddress']
 - name: Add instance to host group
-  add_host: hostname={{ ansible_facts['cloudformation'][stack_name]['stack_resources']['IPAddress']  }} groups=acas
+  add_host: hostname={{ ec2_stack_info['cloudformation'][ec2_stack_name]['stack_resources']['IPAddress']  }} groups=acas
   tags:
     - host
 - name: List of all hosts
@@ -71,4 +123,5 @@
     disable_rollback: false
     template: "roles/ansible-acas-cloud/templates/daily-snapshots.yaml"
   delegate_to: localhost
+  when: false
   tags: [ daily-snapshots ]

@@ -1,0 +1,538 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  AWS CloudFormation ACAS Template VPC_Single_Instance_In_Subnet: Sample
+  template showing how to create a VPC and add an EC2 instance with an Elastic
+  IP address and a security group. **WARNING** This template creates an Amazon
+  EC2 instance. You will be billed for the AWS resources used if you create a
+  stack from this template.
+Parameters:
+  VPCCIDR:
+    Description: CIDR Range of the vpc
+    Type: String
+    ConstraintDescription: VPCCIDR must be a valid CIDR block
+  SubnetCIDR:
+    Description: CIDR Range of the public subnet
+    Type: String
+    ConstraintDescription: SubnetCIDR must be a valid CIDR block
+  PrivSubnetCIDR:
+    Description: CIDR Range of the private subnet
+    Type: String
+    ConstraintDescription: PrivSubnetCIDR must be a valid CIDR block
+  SchrodingerPeeringCIDR:
+    Description: CIDR Range of the schrodinger peering connection
+    Type: String
+    ConstraintDescription: SchrodingerPeeringCIDR must be a valid CIDR block
+Mappings:
+  Region2Examples:
+    us-east-1:
+      Examples: 'https://s3.amazonaws.com/cloudformation-examples-us-east-1'
+    us-west-2:
+      Examples: 'https://s3-us-west-2.amazonaws.com/cloudformation-examples-us-west-2'
+    us-west-1:
+      Examples: 'https://s3-us-west-1.amazonaws.com/cloudformation-examples-us-west-1'
+    eu-west-1:
+      Examples: 'https://s3-eu-west-1.amazonaws.com/cloudformation-examples-eu-west-1'
+    eu-west-2:
+      Examples: 'https://s3-eu-west-2.amazonaws.com/cloudformation-examples-eu-west-2'
+    eu-west-3:
+      Examples: 'https://s3-eu-west-3.amazonaws.com/cloudformation-examples-eu-west-3'
+    eu-central-1:
+      Examples: >-
+        https://s3-eu-central-1.amazonaws.com/cloudformation-examples-eu-central-1
+    ap-southeast-1:
+      Examples: >-
+        https://s3-ap-southeast-1.amazonaws.com/cloudformation-examples-ap-southeast-1
+    ap-northeast-1:
+      Examples: >-
+        https://s3-ap-northeast-1.amazonaws.com/cloudformation-examples-ap-northeast-1
+    ap-northeast-2:
+      Examples: >-
+        https://s3-ap-northeast-2.amazonaws.com/cloudformation-examples-ap-northeast-2
+    ap-northeast-3:
+      Examples: >-
+        https://s3-ap-northeast-3.amazonaws.com/cloudformation-examples-ap-northeast-3
+    ap-southeast-2:
+      Examples: >-
+        https://s3-ap-southeast-2.amazonaws.com/cloudformation-examples-ap-southeast-2
+    ap-south-1:
+      Examples: 'https://s3-ap-south-1.amazonaws.com/cloudformation-examples-ap-south-1'
+    us-east-2:
+      Examples: 'https://s3-us-east-2.amazonaws.com/cloudformation-examples-us-east-2'
+    ca-central-1:
+      Examples: >-
+        https://s3-ca-central-1.amazonaws.com/cloudformation-examples-ca-central-1
+    sa-east-1:
+      Examples: 'https://s3-sa-east-1.amazonaws.com/cloudformation-examples-sa-east-1'
+    cn-north-1:
+      Examples: >-
+        https://s3.cn-north-1.amazonaws.com.cn/cloudformation-examples-cn-north-1
+    cn-northwest-1:
+      Examples: >-
+        https://s3.cn-northwest-1.amazonaws.com.cn/cloudformation-examples-cn-northwest-1
+
+Resources:
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: !Ref VPCCIDR
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackId'
+        - Key: Name
+          Value: !Sub ${AWS::StackName}
+  Subnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: {{ aws_availability_zone }}
+      VpcId: !Ref VPC
+      CidrBlock: !Ref SubnetCIDR
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackId'
+        - Key: Name
+          Value: !Sub pub-sub-${AWS::StackName}
+  PrivSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: {{ aws_availability_zone }}
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivSubnetCIDR
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackId'
+        - Key: Name
+          Value: !Sub priv-sub-${AWS::StackName}
+  NatGatewayEIP:
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
+  NatGateway:
+    Type: 'AWS::EC2::NatGateway'
+    Properties:
+      AllocationId: !GetAtt 'NatGatewayEIP.AllocationId'
+      SubnetId: !Ref Subnet
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackId'
+        - Key: Name
+          Value: !Sub ${AWS::StackName}
+  PrivRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackId'
+        - Key: Name
+          Value: !Sub ${AWS::StackName}
+  PrivRoute:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      RouteTableId: !Ref PrivRouteTable
+      DestinationCidrBlock: '0.0.0.0/0'
+      NatGatewayId: !Ref NatGateway
+  PrivSubnetRouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PrivSubnet
+      RouteTableId: !Ref PrivRouteTable
+
+  InternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackId'
+        - Key: Name
+          Value: !Sub ${AWS::StackName}
+  AttachGateway:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+  RouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackId'
+        - Key: Name
+          Value: !Sub ${AWS::StackName}
+  Route:
+    Type: 'AWS::EC2::Route'
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  SubnetRouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref Subnet
+      RouteTableId: !Ref RouteTable
+  NetworkAcl:
+    Type: 'AWS::EC2::NetworkAcl'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackId'
+        - Key: Name
+          Value: !Sub ${AWS::StackName}
+  InboundHTTPNetworkAclEntry: 
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '100'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'false'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '80'
+        To: '80'
+  InboundHTTPSNetworkAclEntry: 
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '101'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'false'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '443'
+        To: '443'
+  InboundSSHNetworkAclEntry:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '102'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'false'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '22'
+        To: '22'
+  InboundPostgressNetworkAclEntry:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '103'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'false'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '5432'
+        To: '5432'
+  InboundResponsePortsNetworkAclEntry:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '104'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'false'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '1024'
+        To: '65535'
+  InboundNodeJSNetworkAclEntry: 
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '105'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'false'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '3000'
+        To: '3000'
+  InboundNodeJSAPINetworkAclEntry: 
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '106'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'false'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '3001'
+        To: '3001'
+  InboundNodeTomcatNetworkAclEntry: 
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '107'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'false'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '8080'
+        To: '8080'
+  OutBoundHTTPNetworkAclEntry:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '100'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'true'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '80'
+        To: '80'
+  OutBoundHTTPSNetworkAclEntry:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '101'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'true'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '443'
+        To: '443'
+  OutBoundPostgresNetworkAclEntry:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '102'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'true'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '3247'
+        To: '3247'
+  OutBoundLDAPNetworkAclEntry:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '103'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'true'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '636'
+        To: '636'
+  OutBoundResponsePortsNetworkAclEntry:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '104'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'true'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '1024'
+        To: '65535'
+  OutBoundSSHNetworkAclEntry:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '105'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'true'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '22'
+        To: '22'
+  OutBoundSMTPNetworkAclEntry:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '106'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'true'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '587'
+        To: '587'
+{% for item in additional_networkacl_ports %}
+  OutBound{{ item['name'] }}NetworkAclEntry:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      RuleNumber: '{{ loop.index + 106 }}'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'true'
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: '{{ item['port'] }}'
+        To: '{{ item['port'] }}'
+{% endfor %}
+  SubnetNetworkAclAssociation:
+    Type: 'AWS::EC2::SubnetNetworkAclAssociation'
+    Properties:
+      SubnetId: !Ref Subnet
+      NetworkAclId: !Ref NetworkAcl
+  # IPAddress:
+  #   Type: 'AWS::EC2::EIP'
+  #   DependsOn: AttachGateway
+  #   Properties:
+  #     Domain: vpc
+  #     InstanceId: !Ref WebServerInstance
+  InstanceSecurityGroupClient:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: !Ref VPC
+      GroupName: "client access"
+      GroupDescription: client access security group
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackId'
+        - Key: Name
+          Value: !Sub ${AWS::StackName}
+      SecurityGroupIngress:
+{% for item in client_ips %}
+{% set outer_loop = loop %}
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: {{ item }}
+          Description: '{{ client_ips_descriptions[loop.index - 1] }}'
+        - IpProtocol: tcp
+          FromPort: '443'
+          ToPort: '443'
+          CidrIp: {{ item }}
+          Description: '{{ client_ips_descriptions[loop.index - 1] }}'
+{% for additional_client_port in additional_client_ports %}
+        - IpProtocol: tcp
+          FromPort: '{{ additional_client_port['port'] }}'
+          ToPort: '{{ additional_client_port['port'] }}'
+          CidrIp: {{ item }}
+          Description: '{{ client_ips_descriptions[outer_loop.index - 1] }}'
+{% endfor %}
+{% endfor %}
+  InstanceSecurityGroupAdmin:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: !Ref VPC
+      GroupName: "admin access"
+      GroupDescription: admin access security group
+      Tags:
+        - Key: Application
+          Value: !Ref 'AWS::StackId'
+        - Key: Name
+          Value: !Sub ${AWS::StackName}
+      SecurityGroupIngress:
+{% for item in admin_ips %}
+{% set outer_loop = loop %}
+        - IpProtocol: tcp
+          FromPort: '5432'
+          ToPort: '5432'
+          CidrIp: {{ item }}
+          Description: '{{ admin_ips_descriptions[loop.index - 1] }}'
+        - IpProtocol: tcp
+          FromPort: '3000'
+          ToPort: '3000'
+          CidrIp: {{ item }}
+          Description: '{{ admin_ips_descriptions[loop.index - 1] }}'
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: {{ item }}
+          Description: '{{ admin_ips_descriptions[loop.index - 1] }}'
+        - IpProtocol: tcp
+          FromPort: '8080'
+          ToPort: '8080'
+          CidrIp: {{ item }}
+          Description: '{{ admin_ips_descriptions[loop.index - 1] }}'
+        - IpProtocol: tcp
+          FromPort: '3001'
+          ToPort: '3001'
+          CidrIp: {{ item }}
+          Description: '{{ admin_ips_descriptions[loop.index - 1] }}'
+{% for additional_admin_port in additional_admin_ports %}
+        - IpProtocol: tcp
+          FromPort: '{{ additional_admin_port['port'] }}'
+          ToPort: '{{ additional_admin_port['port'] }}'
+          CidrIp: {{ item }}
+          Description: '{{ admin_ips_descriptions[outer_loop.index - 1] }}'
+{% endfor %}
+{% endfor %}
+Outputs:
+  VPC:
+    Description: A reference to the created VPC
+    Value: !Ref VPC
+    Export:
+      Name:
+        Fn::Sub:
+          "${AWS::StackName}-VPC"
+
+  Subnets:
+    Description: A list of the public subnets
+    Value: !Join [ ",", [ !Ref Subnet ]]
+    Export:
+      Name:
+        Fn::Sub:
+          "${AWS::StackName}-Subnets"
+
+  PrivSubnets:
+    Description: A list of the private subnets
+    Value: !Join [ ",", [ !Ref PrivSubnet ]]
+    Export:
+      Name:
+        Fn::Sub:
+          "${AWS::StackName}-PrivSubnets"
+
+  Subnet1:
+    Description: A reference to the public subnet in the 1st Availability Zone
+    Value: !Ref Subnet
+    Export:
+      Name:
+        Fn::Sub:
+          "${AWS::StackName}-Subnet1"
+
+  Subnet1CIDR:
+    Description: A reference to the public subnet cidr in the 1st Availability Zone
+    Value: !Ref SubnetCIDR
+    Export:
+      Name:
+        Fn::Sub:
+          "${AWS::StackName}-Subnet1-CIDR"
+
+  PrivateSubnet1:
+    Description: A reference to the private subnet in the 1st Availability Zone
+    Value: !Ref PrivSubnet
+    Export:
+      Name:
+        Fn::Sub:
+          "${AWS::StackName}-PrivateSubnet1"
+
+  PrivateSubnet1CIDR:
+    Description: A reference to the public subnet cidr in the 1st Availability Zone
+    Value: !Ref PrivSubnetCIDR
+    Export:
+      Name:
+        Fn::Sub:
+          "${AWS::StackName}-PrivateSubnet1-CIDR"
+
+  ClientSecurityGroup:
+    Description: Client security group
+    Value: !Ref InstanceSecurityGroupClient
+    Export:
+      Name:
+        Fn::Sub:
+          "${AWS::StackName}-ClientSecurityGroup"
+
+  AdminSecurityGroup:
+    Description: Admin security group
+    Value: !Ref InstanceSecurityGroupAdmin
+    Export:
+      Name:
+        Fn::Sub:
+          "${AWS::StackName}-AdminSecurityGroup"

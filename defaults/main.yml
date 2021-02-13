@@ -56,3 +56,9 @@ acas_security_groups: []
 acas_instance_subnet:
 
 termination_protection: true
+
+ssh_via_private_ip: false
+
+
+backup_tag_true: true
+backup_tag_false: false

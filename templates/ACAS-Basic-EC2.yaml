@@ -141,10 +141,10 @@ Resources:
           Value: !Sub ${AWS::StackName}-acas
 {% if run_backups | bool %}
         - Key: Backup
-          Value: True
+          Value: {{ backup_tag_true }}
 {% else %}
         - Key: Backup
-          Value: False
+          Value: {{ backup_tag_false }}
 {% endif %}
 {% if backups_retention is defined %}
         - Key: Retention
@@ -159,7 +159,7 @@ Resources:
           SubnetId: !Ref Subnet
           PrivateIpAddress : !Ref ACASPrivateIP
 {% else %}
-      SecurityGroupIds: !Ref SecurityGroupIDs
+      SecurityGroups: !Ref SecurityGroupIDs
 {% endif %}
       BlockDeviceMappings:
         - DeviceName: /dev/sda1

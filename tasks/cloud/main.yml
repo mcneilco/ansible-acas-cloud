@@ -107,10 +107,16 @@
     url: "https://rimuhosting.com/dns/dyndns.jsp?host={{ acas_fqdn }}&api_key={{ rimu_dns_apikey }}&value={{ ec2_stack_info['cloudformation'][ec2_stack_name]['stack_resources']['IPAddress']  }}"
   delegate_to: localhost
   when: manage_full_stack and lookup('dig', acas_fqdn ) != ec2_stack_info['cloudformation'][ec2_stack_name]['stack_resources']['IPAddress']
-- name: Add instance to host group
+- name: Add public IP to host group
   add_host: hostname={{ ec2_stack_info['cloudformation'][ec2_stack_name]['stack_resources']['IPAddress']  }} groups=acas
   tags:
     - host
+  when: ssh_via_private_ip != true
+- name: Add private IP to host group
+  add_host: hostname={{ acas_private_ip }} groups=acas
+  tags:
+    - host
+  when: ssh_via_private_ip == true
 - name: List of all hosts
   debug:
     msg: "{{ play_hosts }}"

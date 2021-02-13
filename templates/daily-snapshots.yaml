@@ -68,7 +68,7 @@ Resources:
                 reservations = ec.describe_instances(
                     Filters=[
                         {'Name': 'tag-key', 'Values': ['backup', 'Backup']},
-                        {'Name': 'tag-value', 'Values': ['true',"True"]}
+                        {'Name': 'tag-value', 'Values': ['true',"True", "Yes", "yes"]}
                     ]
                 ).get(
                     'Reservations', []

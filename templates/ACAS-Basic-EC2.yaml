@@ -85,7 +85,7 @@ Resources:
       AvailabilityZone: {{ aws_availability_zone }}
       Encrypted: true
       KmsKeyId: {{ acas_data_volume_encryption_key }}
-      Size: 50
+      Size: {{ acas_data_volume_size }}
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}_data
@@ -165,7 +165,7 @@ Resources:
         - DeviceName: /dev/sda1
           Ebs:
             DeleteOnTermination: true
-            VolumeSize: 20
+            VolumeSize: {{ root_volume_size }}
       Volumes:
         - Device: /dev/sdf
           VolumeId: !Ref 'ACASDataVolume'

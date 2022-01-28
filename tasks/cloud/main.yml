@@ -75,7 +75,7 @@
     template_parameters:
       KeyName: "{{ ec2_key_pair_name | default('acas') }}"
       InstanceType: "{{ instance_type }}"
-      ImageId: ami-01ca03df4a6012157
+      ImageId: "{{ image_id }}"
       ACASPrivateIP: "{{ acas_private_ip }}"
       Subnet: "{{ vpc_stack_info['cloudformation'][vpc_stack_name]['stack_resources']['Subnet'] if manage_full_stack else acas_instance_subnet }}"
       SecurityGroupIDs: "{{ [vpc_stack_info['cloudformation'][vpc_stack_name]['stack_resources']['InstanceSecurityGroupAdmin'], vpc_stack_info['cloudformation'][vpc_stack_name]['stack_resources']['InstanceSecurityGroupClient']]|join(',') if manage_full_stack else acas_security_groups|join(',') }}"

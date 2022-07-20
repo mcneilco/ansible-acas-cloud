@@ -173,11 +173,20 @@ Resources:
           Fn::Base64: !Sub |
               #!/bin/bash
               # Version: 1.0
-              dnf install -y python3-pip
+              #apt install python-is-python3
+              #apt install python3
+              apt-get update
+              apt-get install -y python3-pip
               pip3 install awscli --upgrade
-              /usr/bin/easy_install-3 --script-dir /opt/aws/bin https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz
-              cp -v /usr/local/lib/python3*/site-packages/aws_cfn_bootstrap*/init/redhat/cfn-hup /etc/init.d
-              chmod +x /etc/init.d/cfn-hup
+              apt-get install -y python-setuptools
+              mkdir -p /opt/aws/bin
+              apt-get install -y wget
+              wget https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz
+              python3 -m easy_install --script-dir /opt/aws/bin aws-cfn-bootstrap-py3-latest.tar.gz
+
+              # Do I need these? They won't work on ubuntu
+              #cp -v /usr/local/lib/python3*/site-packages/aws_cfn_bootstrap*/init/redhat/cfn-hup /etc/init.d
+              #chmod +x /etc/init.d/cfn-hup
               # Mount data volume
               mkfs -t ext4 /dev/nvme1n1
               mkdir /vol

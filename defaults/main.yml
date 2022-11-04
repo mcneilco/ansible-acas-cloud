@@ -54,7 +54,7 @@ aws_availability_zone: us-east-1a
 instance_type: r5a.large
 image_id: ami-0070c5311b7677678
 
-acas_data_volume_size: 64
+acas_data_volume_size: 82
 root_volume_size: 20
 
 acas_security_groups: []

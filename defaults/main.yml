@@ -52,7 +52,7 @@ aws_availability_zone: us-east-1a
 # instance_type: r5a.large
 # image_id: ami-01ca03df4a6012157
 instance_type: r5a.large
-image_id: ami-0070c5311b7677678
+image_id: ami-0f69dd1d0d03ad669
 
 acas_data_volume_size: 82
 root_volume_size: 20

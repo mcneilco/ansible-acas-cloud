@@ -50,7 +50,7 @@ aws_availability_zone: us-east-1a
 
 # What AWS instance type to create
 instance_type: r5a.large
-image_id: ami-01ca03df4a6012157
+image_id: ami-08c40ec9ead489470
 
 acas_data_volume_size: 50
 root_volume_size: 20
@@ -61,7 +61,7 @@ acas_instance_subnet:
 
 termination_protection: true
 
-ssh_via_private_ip: false
+ssh_via_private_ip: true
 
 
 backup_tag_true: true

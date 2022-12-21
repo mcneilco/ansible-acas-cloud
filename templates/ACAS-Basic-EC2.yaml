@@ -153,7 +153,7 @@ Resources:
 {% if true %}
       NetworkInterfaces:
         - GroupSet: !Ref SecurityGroupIDs
-          AssociatePublicIpAddress: 'true'
+          AssociatePublicIpAddress: 'false'
           DeviceIndex: '0'
           DeleteOnTermination: 'true'
           SubnetId: !Ref Subnet
@@ -173,11 +173,17 @@ Resources:
           Fn::Base64: !Sub |
               #!/bin/bash
               # Version: 1.0
-              dnf install -y python3-pip
+              apt-get update
+              export DEBIAN_FRONTEND=noninteractive
+              export NEEDRESTART_MODE=a
+              apt-get install -y python3-pip
               pip3 install awscli --upgrade
-              /usr/bin/easy_install-3 --script-dir /opt/aws/bin https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz
-              cp -v /usr/local/lib/python3*/site-packages/aws_cfn_bootstrap*/init/redhat/cfn-hup /etc/init.d
-              chmod +x /etc/init.d/cfn-hup
+              apt-get install -y python-setuptools
+              mkdir -p /opt/aws/bin
+              #apt-get install -y wget
+              #wget https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz
+              pip3 install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz
+
               # Mount data volume
               mkfs -t ext4 /dev/nvme1n1
               mkdir /vol
@@ -185,8 +191,8 @@ Resources:
               mount /dev/nvme1n1 /vol/acas
               echo "/dev/nvme1n1 /vol/acas ext4 defaults,nofail 0 2" | sudo tee --append /etc/fstab
               # Signal build success
-              /opt/aws/bin/cfn-init --stack ${AWS::StackId} --resource WebServerInstance --region ${AWS::Region}
-              /opt/aws/bin/cfn-signal -e 0 --stack ${AWS::StackName} --resource WebServerInstance --region ${AWS::Region}
+              cfn-init --stack ${AWS::StackId} --resource WebServerInstance --region ${AWS::Region}
+              cfn-signal -e 0 --stack ${AWS::StackName} --resource WebServerInstance --region ${AWS::Region}
     CreationPolicy:
       ResourceSignal:
         Timeout: PT5M

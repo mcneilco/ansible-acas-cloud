@@ -71,6 +71,7 @@
     profile: "{{ aws_profile }}"
     region: "{{ aws_region }}"
     disable_rollback: false
+    create_changeset: true
     template: "/tmp/{{ ec2_stack_name }}.yaml"
     template_parameters:
       KeyName: "{{ ec2_key_pair_name | default('acas') }}"
